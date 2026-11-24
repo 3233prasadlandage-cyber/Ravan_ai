@@ -1,6 +1,70 @@
 name: Build RAVAN AI APK
 
 on:
+name: Build RAVAN AI APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'RAVAN_AI_WAKE_WORD_ADDED.zip'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract Android project ZIP
+        run: |
+          test -f RAVAN_AI_WAKE_WORD_ADDED.zip
+          mkdir -p extracted
+          unzip -q RAVAN_AI_WAKE_WORD_ADDED.zip -d extracted
+          test -d extracted/RavanAI/app
+          ls -la extracted/RavanAI
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '15859902'
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          packages: 'platform-tools'
+
+      - name: Install Android SDK 36
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Build debug APK
+        run: |
+          gradle --no-daemon --stacktrace -p extracted/RavanAI assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RAVAN-AI-APK
+          path: extracted/RavanAI/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
   workflow_dispatch:
   push:
     paths:
